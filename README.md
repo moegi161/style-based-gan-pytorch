@@ -1,5 +1,10 @@
-#Unconditional StyleGAN Pytorch Implementation from @rosinality
-## Style-Based GAN in PyTorch 
+# Conditional StyleGAN for Attribute-driven Face Synthesis
+
+This is a repository for the implementation of Conditional StyleGAN for Attribute-driven Face Synthesis.
+More details will be updated soon.
+
+## Unconditional StyleGAN Pytorch Implementation from @rosinality
+### Style-Based GAN in PyTorch 
 
 ##### Update (2019/09/01)
 
