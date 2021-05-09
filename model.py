@@ -275,10 +275,13 @@ class AdaptiveInstanceNorm(nn.Module):
         self.style.linear.bias.data[in_channel:] = 0
 
     def forward(self, input, style):
-        style = self.style(style).unsqueeze(2).unsqueeze(3)
+        style = self.style(style)
+        style = style.unsqueeze(2).unsqueeze(3)
         gamma, beta = style.chunk(2, 1)
 
+        #print(gamma.size(), beta.size())
         out = self.norm(input)
+        #print(input.size(),out.size())
         out = gamma * out + beta
 
         return out
@@ -314,7 +317,7 @@ class StyledConvBlock(nn.Module):
         out_channel,
         kernel_size=3,
         padding=1,
-        style_dim=512,
+        style_dim=552,
         initial=False,
         upsample=False,
         fused=False,
@@ -432,7 +435,7 @@ class Generator(nn.Module):
 
             if i > 0 and step > 0:
                 out_prev = out
-                
+
             out = conv(out, style_step, noise[i])
 
             if i == step:
@@ -463,7 +466,8 @@ class StyledGenerator(nn.Module):
 
     def forward(
         self,
-        input,
+        input, # a batch of 1 x 512 latent code
+        labels_in, # a batch of label vectors
         noise=None,
         step=0,
         alpha=-1,
@@ -472,11 +476,32 @@ class StyledGenerator(nn.Module):
         mixing_range=(-1, -1),
     ):
         styles = []
+        input_concat = []
+        concat = []
+
         if type(input) not in (list, tuple):
             input = [input]
 
         for i in input:
             styles.append(self.style(i))
+
+        if mean_style is not None:
+            styles_norm = []
+
+            for style in styles:
+                styles_norm.append(mean_style + style_weight * (style - mean_style))
+
+            styles = styles_norm
+
+        #Concat label to input
+        #print(type(styles),styles[0].shape,input[0][0].shape, labels_in[0].shape)
+        for j in range(len(styles)):
+            concat = []
+            for i in range(len(styles[j])):
+                concat.append(torch.cat([styles[j][i], labels_in[i]]))
+            input_concat.append(torch.stack(concat))
+
+        styles = input_concat
 
         batch = input[0].shape[0]
 
@@ -487,19 +512,11 @@ class StyledGenerator(nn.Module):
                 size = 4 * 2 ** i
                 noise.append(torch.randn(batch, 1, size, size, device=input[0].device))
 
-        if mean_style is not None:
-            styles_norm = []
-
-            for style in styles:
-                styles_norm.append(mean_style + style_weight * (style - mean_style))
-
-            styles = styles_norm
-
         return self.generator(styles, noise, step, alpha, mixing_range=mixing_range)
 
     def mean_style(self, input):
         style = self.style(input).mean(0, keepdim=True)
-
+        #print(style.shape)
         return style
 
 
@@ -571,7 +588,6 @@ class Discriminator(nn.Module):
                     out = (1 - alpha) * skip_rgb + alpha * out
 
         out = out.squeeze(2).squeeze(2)
-        # print(input.size(), out.size(), step)
         out = self.linear(out)
 
         return out
