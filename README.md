@@ -1,4 +1,5 @@
-# Style-Based GAN in PyTorch
+#Unconditional StyleGAN Pytorch Implementation from @rosinality
+## Style-Based GAN in PyTorch 
 
 ##### Update (2019/09/01)
 
